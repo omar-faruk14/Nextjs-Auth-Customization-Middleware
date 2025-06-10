@@ -1,20 +1,35 @@
-import jwt from "jsonwebtoken";
+import { SignJWT, jwtVerify } from "jose";
 
-const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET!;
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
+const encoder = new TextEncoder();
 
-export function generateAccessToken(userId: number) {
-  return jwt.sign({ userId }, ACCESS_SECRET, { expiresIn: "15m" });
+const ACCESS_SECRET = encoder.encode(process.env.JWT_ACCESS_SECRET!);
+const REFRESH_SECRET = encoder.encode(process.env.JWT_REFRESH_SECRET!);
+
+export async function generateAccessToken(userId: number): Promise<string> {
+  return await new SignJWT({ userId })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("15m")
+    .sign(ACCESS_SECRET); // HS256 secret must be Uint8Array
 }
 
-export function generateRefreshToken(userId: number) {
-  return jwt.sign({ userId }, REFRESH_SECRET, { expiresIn: "7d" });
+export async function generateRefreshToken(userId: number): Promise<string> {
+  return await new SignJWT({ userId })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("7d")
+    .sign(REFRESH_SECRET);
 }
 
-export function verifyAccessToken(token: string) {
-  return jwt.verify(token, ACCESS_SECRET) as { userId: number };
+
+export async function verifyAccessToken(token: string) {
+  const { payload } = await jwtVerify(token, ACCESS_SECRET);
+  return payload;
 }
 
-export function verifyRefreshToken(token: string) {
-  return jwt.verify(token, REFRESH_SECRET) as { userId: number };
+export async function verifyRefreshToken(
+  token: string
+): Promise<{ userId: number }> {
+  const { payload } = await jwtVerify(token, REFRESH_SECRET);
+  return payload as { userId: number };
 }
