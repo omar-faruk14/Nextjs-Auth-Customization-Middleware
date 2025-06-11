@@ -41,54 +41,72 @@
 //     </div>
 //   );
 // }
-import { headers } from "next/headers";
+
+
+
+"use client";
+
+import { useForm } from "react-hook-form";
+import { useState } from "react";
 import { updateEmail } from "@/app/actions/updateEmail";
-import { redirect } from "next/navigation";
 
-interface Props {
-  searchParams?: {
-    message?: string;
+
+type FormValues = {
+  email: string;
+};
+
+export default function UpdateEmailForm() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>();
+
+  const [serverMessage, setServerMessage] = useState<string | null>(null);
+
+  const onSubmit = async (data: FormValues) => {
+    try {
+      const formData = new FormData();
+      formData.append("email", data.email);
+
+      const result = await updateEmail(formData); 
+      setServerMessage(result.error ?? "Email updated successfully.");
+    } catch {
+      setServerMessage("Something went wrong. Try again.");
+    }
   };
-}
-
-export default async function UpdateEmailForm(props: Props) {
-  const searchParams = props.searchParams
-    ? await props.searchParams
-    : undefined;
-
-  async function handleUpdate(formData: FormData) {
-    "use server";
-
-    const hdrs = await headers();
-    const result = await updateEmail(formData, { headers: hdrs });
-    const message = result.error ?? "Email updated successfully.";
-    redirect(`/profile?message=${encodeURIComponent(message)}`);
-
-  }
+  
 
   return (
-    <form action={handleUpdate} className="space-y-4 mt-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-6">
       <label className="block">
         <span className="text-sm">New Email</span>
         <input
-          name="email"
+          {...register("email", {
+            required: "Email is required",
+            pattern: {
+              value: /^[^@]+@[^@]+\.[^@]+$/,
+              message: "Invalid email address",
+            },
+          })}
           type="email"
-          required
           className="mt-1 w-full p-2 border rounded"
         />
+        {errors.email && (
+          <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>
+        )}
       </label>
 
       <button
         type="submit"
-        className="bg-green-600 text-white px-4 py-2 rounded"
+        disabled={isSubmitting}
+        className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
       >
-        Update Email
+        {isSubmitting ? "Updating..." : "Update Email"}
       </button>
 
-      {searchParams?.message && (
-        <p className="text-sm mt-2">
-          {decodeURIComponent(searchParams.message)}
-        </p>
+      {serverMessage && (
+        <p className="text-sm mt-2 text-blue-600">{serverMessage}</p>
       )}
     </form>
   );

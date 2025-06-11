@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { db } from "@/app/lib/db";
 import { z } from "zod";
 
@@ -7,10 +8,7 @@ const UpdateEmailSchema = z.object({
   email: z.string().email(),
 });
 
-export async function updateEmail(
-  formData: FormData,
-  { headers }: { headers: Headers }
-) {
+export async function updateEmail(formData: FormData) {
   const raw = {
     email: formData.get("email"),
   };
@@ -20,7 +18,10 @@ export async function updateEmail(
     return { error: "Invalid email address" };
   }
 
-  const userId = Number(headers.get("x-user-id"));
+  // ✅ Get headers here in the server action
+  const hdrs = await headers();
+  const userId = Number(hdrs.get("x-user-id"));
+
   if (!userId) {
     return { error: "Unauthorized" };
   }
